@@ -12,7 +12,6 @@ function fmt(val:number |undefined, digits=1) : string {
 
 export default function Home() { 
   const {reading, isESP32Connected} = useWaterQualitySocket(); 
-  console.log(isESP32Connected)
   const before : StageReading = reading?.before ?? {}; 
   const after :StageReading = reading?.after?? {};
 
