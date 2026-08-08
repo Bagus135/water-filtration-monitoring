@@ -1,0 +1,7 @@
+{
+    "watch" : ["src/server.ts"], 
+    "ext" : "ts.tsx", 
+    "ignore" : ["node_modules", ".next","app", "hooks"],
+    "exec" : "tsx src/server.ts", 
+    "delay" : "3000"
+}
