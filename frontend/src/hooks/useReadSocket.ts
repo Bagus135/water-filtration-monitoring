@@ -12,7 +12,8 @@ export function useWaterQualitySocket() : UseWaterQualitySocketResult{
     useEffect(()=>{
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"; 
         const wsUrl = `${protocol}//${window.location.host}/ws`;
-
+        console.log(wsUrl);
+        
         const ws = new WebSocket(wsUrl); 
         wsRef.current = ws; 
 
