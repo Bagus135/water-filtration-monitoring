@@ -7,7 +7,7 @@
     "predev": "kill-port 3000",
     "dev": "nodemon",
     "build": "next build",
-    "start": "tsx server.ts",
+    "start": "tsx src/server.ts",
     "lint": "next lint"
   },
   "dependencies": {
