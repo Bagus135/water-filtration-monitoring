@@ -1,22 +1,31 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WebSocketsClient.h>
+#include <env.h>
 
 const int pin_pH = 32; 
 const int pin_Turbidity = 34; 
 
-float kalibrasi_pH = 21.34; 
+float kalibrasi_pH = 21.34;  
 
 WebSocketsClient WSClient; 
 unsigned long lastSendTime = 0; 
 const unsigned long SEND_INTERVAL_MS = 3000; 
 
-const char* ssid = "LOQ123";
-const char* password = "kimichan123";
+const bool WS_USE_SSL = true;
+const char* WS_HOST_LOCAL = "'192.168.137.1"; 
+const char* WS_HOST_SSL = "water-filtration-monitoring.onrender.com"; 
+const char* DEVICE_ID = "station-01";
+const uint16_t WS_PORT_SSL = 443;
+const uint16_t WS_PORT_LOCAL = 3000;
 
-const char* WS_HOST = "192.168.137.1"; 
-const uint16_t WS_PORT = 3000; 
-const char* WS_PATH = "/ws"; 
+String buildWsPath() {
+  String path = "/ws?role=esp32&device_id=";
+  path += DEVICE_ID;
+  path += "&token=";
+  path += device_token;
+  return path;
+}
 
 void WSEvent (WStype_t  type, uint8_t* payload , size_t length){
   switch (type) {
@@ -69,8 +78,12 @@ void setup() {
   Serial.println("\nWifi connected, IP : " + WiFi.localIP().toString()); 
 
   randomSeed(esp_random()); 
-
-  WSClient.begin(WS_HOST, WS_PORT, WS_PATH);
+  String WS_PATH = buildWsPath();
+  if(WS_USE_SSL){
+    WSClient.beginSSL(WS_HOST_SSL, WS_PORT_SSL, WS_PATH.c_str());
+  } else {
+    WSClient.begin(WS_HOST_LOCAL, WS_PORT_LOCAL, WS_PATH.c_str());
+  }
   WSClient.onEvent(WSEvent); 
   WSClient.setReconnectInterval(500); 
 }
@@ -82,21 +95,34 @@ void loop() {
   if(now - lastSendTime >= SEND_INTERVAL_MS){
     lastSendTime = now;
     
-    float adc_pH = ADCAvg(pin_pH); 
-    float V_pH = adc_pH*(3.3 / 4095.0); 
-    float val_pH = -5.7 * V_pH + kalibrasi_pH;
+    // before filtering
+    float adc_pH_before = ADCAvg(pin_pH); 
+    float V_pH_before= adc_pH_before*(3.3 / 4095.0); 
+    float val_pH_before = -5.7 * V_pH_before + kalibrasi_pH;
 
 
-    float adc_turbidity = ADCAvg(pin_Turbidity); 
-    float V_turbidityRaw = adc_turbidity * (3.3 / 4095.0);
-    float V_turbidity = V_turbidityRaw * 1.5; 
+    float adc_turbidity_before = ADCAvg(pin_Turbidity); 
+    float V_turbidityRaw_before = adc_turbidity_before * (3.3 / 4095.0);
+    float V_turbidity_before = V_turbidityRaw_before * 1.5; 
 
-    int tdsRaw = random(201, 301); 
+    int tdsRawbefore = random(201, 301); 
+
+    // after monitoring
+    int val_pH_after = random(301, 401); 
+    int  V_turbidity_after = random(401, 501); 
+    int tdsRawAfter = random(501, 601); 
     
-    StaticJsonDocument<200> doc;
-    doc["ph"] = val_pH; 
-    doc["turbidity"] = V_turbidity; 
-    doc["tds"] = tdsRaw; 
+    StaticJsonDocument<400> doc;
+
+    JsonObject before = doc["before"].to<JsonObject>();
+    before["ph"] = val_pH_before; 
+    before["turbidity"] = V_turbidity_before; 
+    before["tds"] = tdsRawbefore;
+
+    JsonObject after = doc["after"].to<JsonObject>();
+    after["ph"] = val_pH_after; 
+    after["turbidity"] = V_turbidity_after; 
+    after["tds"] = tdsRawAfter; 
 
     String output; 
     serializeJson(doc, output); 
@@ -105,7 +131,7 @@ void loop() {
       WSClient.sendTXT(output); 
       Serial.print("Send : " + output); 
     } else {
-      Serial.println("WS hasnt connected to server yet, data cannot send");
+      Serial.println("WS hasnt connected to server yet, cannot send data");
     }
   }
 }

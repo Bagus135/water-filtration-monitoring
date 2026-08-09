@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "name": "Project",
+      "path": "."
+    },
+    {
+      "name": "ESP32",
+      "path": "./esp32"
+    }
+  ]
+}
