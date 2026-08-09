@@ -46,7 +46,7 @@ export function createWSServer(server: Server, app : NextServer){
         const token = query.token as string; 
         
         ws.isEsp32 = isESP32;
-        ws.isAlive = true;
+        ws.lastSeen = Date.now();
         ws.deviceId = device_id ;
         
         if( isESP32 && token !== process.env.TOKEN){
@@ -54,10 +54,6 @@ export function createWSServer(server: Server, app : NextServer){
             ws.close(4001,"Token is invalid");
             return;
         }
-        ws.on("pong", function(this : ExtendedWebSocket){
-            this.isAlive = true;
-            
-        });
 
         console.log( isESP32 ? `ESP32 connected ${device_id}` : "Other device");
         clients.add(ws);
@@ -76,31 +72,32 @@ export function createWSServer(server: Server, app : NextServer){
         }
 
         ws.on("message", (raw : Buffer)=> {
-        let msg : Partial<WaterQualityESP32Reading>; 
-        try {
-            msg = JSON.parse(raw.toString())
-        } catch {
-            console.error("Data bukan JSON valid :")
-            return;
-        }
-
-        if(!msg.before || !msg.after){
-            console.warn("Format data is incorrect", msg)
-            return;
-        }
-
-        lastReading = {
-            before : msg.before,
-            after : msg.after,
-            timestamp : new Date().toLocaleTimeString()
-        };
-
-        const payload = JSON.stringify({type : "reading", data : lastReading})
-        for (const client of clients) {
-            if(client.readyState === WebSocket.OPEN){
-                client.send(payload);
+            let msg : Partial<WaterQualityESP32Reading>; 
+            ws.lastSeen = Date.now()
+            try {
+                msg = JSON.parse(raw.toString())
+            } catch {
+                console.error("Data bukan JSON valid :")
+                return;
             }
-        }
+
+            if(!msg.before || !msg.after){
+                console.warn("Format data is incorrect", msg)
+                return;
+            }
+
+            lastReading = {
+                before : msg.before,
+                after : msg.after,
+                timestamp : new Date().toLocaleTimeString()
+            };
+
+            const payload = JSON.stringify({type : "reading", data : lastReading})
+            for (const client of clients) {
+                if(client.readyState === WebSocket.OPEN){
+                    client.send(payload);
+                }
+            }
         })
 
         ws.on("close", ()=>{
@@ -109,7 +106,7 @@ export function createWSServer(server: Server, app : NextServer){
                 esp32ConnectedCount = Math.max(0, esp32ConnectedCount -1);
                 broadcastStatus();
             }
-            console.log(esp32ConnectedCount);
+            console.log(`ESP 32 Count = ${esp32ConnectedCount}`);
             console.log(isESP32? "ESP32 Disconnected" : "Other Device Disconnected")
         })
     });
