@@ -1,46 +1,51 @@
 "use client";
 
-import {useEffect , useRef, useState} from "react"; 
-import { UseWaterQualitySocketResult, WaterQualityClientsReading } from "../types/types";
+import { useEffect, useRef, useState } from "react";
+import {
+  UseWaterQualitySocketResult,
+  WaterQualityClientsReading,
+} from "../types/types";
 
+export function useWaterQualitySocket(): UseWaterQualitySocketResult {
+  const [reading, setReading] = useState<WaterQualityClientsReading | null>(
+    null,
+  );
+  const [isESP32Connected, setESP32IsConnected] = useState<boolean>(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
-export function useWaterQualitySocket() : UseWaterQualitySocketResult{
-    const [reading, setReading] = useState<WaterQualityClientsReading | null> (null); 
-    const [isESP32Connected, setESP32IsConnected] = useState<boolean>(false); 
-    const wsRef = useRef<WebSocket |null>(null);
-    
-    useEffect(()=>{
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"; 
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        console.log(wsUrl);
-        
-        const ws = new WebSocket(wsUrl); 
-        wsRef.current = ws; 
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      `${protocol}//${window.location.host}/ws`;
 
-        ws.onopen = () =>{
-            console.log("WebSocket terhubung");
-            if(wsRef.current !== ws) return; 
-        };
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
-        ws.onmessage = (e)=>{
-            if(wsRef.current !== ws ) return; 
-    
-            const msg = JSON.parse(e.data); 
+    ws.onopen = () => {
+      console.log("WebSocket terhubung");
+      if (wsRef.current !== ws) return;
+    };
 
-            if (msg.type == "reading"){
-                setReading(msg.data as WaterQualityClientsReading); 
-            } else if (msg.type === "status"){
-                setESP32IsConnected(Boolean(msg.espcount));
-            }
-        }
+    ws.onmessage = (e) => {
+      if (wsRef.current !== ws) return;
 
-        ws.onclose = () => {
-            console.log("WebSocket terputus"); 
-            setESP32IsConnected(false);
-        }; 
+      const msg = JSON.parse(e.data);
 
-        return () => ws.close();
-    }, []);
+      if (msg.type == "reading") {
+        setReading(msg.data as WaterQualityClientsReading);
+      } else if (msg.type === "status") {
+        setESP32IsConnected(Boolean(msg.espcount));
+      }
+    };
 
-    return {reading,  isESP32Connected}
+    ws.onclose = () => {
+      console.log("WebSocket terputus");
+      setESP32IsConnected(false);
+    };
+
+    return () => ws.close();
+  }, []);
+
+  return { reading, isESP32Connected };
 }

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev" :"kill-port 3000",
+    "predev": "kill-port 3000",
     "dev": "nodemon",
     "build": "next build",
     "start": "NODE_ENV=production node server.ts",
@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
+    "i": "^0.3.7",
+    "lucide-react": "^1.30.0",
     "next": "16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "tsx": "^4.23.11",
     "ws": "^8.21.1"
   },
   "devDependencies": {
@@ -25,9 +28,9 @@
     "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "kill-port": "^2.0.1",
     "nodemon": "^3.1.14",
     "tailwindcss": "^4",
-    "tsx": "^4.23.4",
     "typescript": "^5"
   }
 }
