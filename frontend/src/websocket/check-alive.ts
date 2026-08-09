@@ -2,7 +2,9 @@ import { clients } from "./ws-server";
 
 export function startHeartbeat (){
      return setInterval(()=>{
-        for(const client of clients){ 
+        console.log("testing heartbeat running properly di render");
+        
+        for(const client of clients){
             if(!client.isEsp32)continue
 
             if(!client.isAlive){
