@@ -89,9 +89,10 @@ export function createWSServer(server: Server, app : NextServer){
             lastReading = {
                 before : msg.before,
                 after : msg.after,
-                timestamp : new Date().toLocaleTimeString()
+                device : ws.deviceId,
+                timestamp : new Date().toISOString()
             };
-
+            
             const payload = JSON.stringify({type : "reading", data : lastReading})
             for (const client of clients) {
                 if(client.readyState === WebSocket.OPEN){

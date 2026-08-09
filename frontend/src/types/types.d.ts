@@ -9,10 +9,11 @@ export interface WaterQualityESP32Reading{
     after : StageReading; 
 }
 export interface WaterQualityClientsReading extends WaterQualityESP32Reading{
-   timestamp : string
+   timestamp : string;
+   device : string | undefined;
 }
 
-interface UseWaterQualitySocketResult {
-    reading : WaterQualityReading| null; 
+interface  UseWaterQualitySocketResult {
+    reading : WaterQualityClientsReading | null; 
     isESP32Connected : boolean; 
 }
