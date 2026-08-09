@@ -1,7 +1,7 @@
 import { WebSocket as WSClient } from "ws";
 
 interface ExtendedWebSocket extends WSClient {
-  isAlive?: boolean;
+  lastSeen?: number;
   isEsp32?: boolean;
   deviceId?: string;
 }
