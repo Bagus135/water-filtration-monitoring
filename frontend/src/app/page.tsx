@@ -2,6 +2,7 @@
 
 import { useWaterQualitySocket } from "../hooks/useReadSocket";
 import { StageReading } from "../types/types";
+import dateParse from "../utils/parse-date";
 import { MetricRow } from "./component";
 import {
   Droplets,
@@ -10,7 +11,8 @@ import {
   Atom,
   ArrowRight,
   ArrowDown,
-  Smartphone,
+  Microchip,
+  
 } from "lucide-react";
 
 function fmt(val: number | undefined, digits = 1): string {
@@ -18,10 +20,11 @@ function fmt(val: number | undefined, digits = 1): string {
 }
 
 export default function Home() {
-  const { reading, isESP32Connected } = useWaterQualitySocket();
+  const { reading, isESP32Connected} = useWaterQualitySocket();
   const before: StageReading = reading?.before ?? {};
   const after: StageReading = reading?.after ?? {};
 
+  const formattedTimestamp = dateParse(reading?.timestamp)
   return (
     <main
       className={`px-4 md:px-6 py-8 flex flex-col items-center min-h-screen md:justify-center ${
@@ -52,22 +55,30 @@ export default function Home() {
               </span>
             </div>
 
-            <div className='w-1 h-8 bg-gray-600/50'></div>
+            <div className='w-1 h-12 bg-gray-600/50'></div>
 
             <div className='flex flex-col'>
               <span className='text-gray-400 text-base lg:text-2xl'>
                 Last Update
               </span>
               <span className='text-white text-sm lg:text-xl'>
-                {reading
-                  ? new Date(reading.timestamp).toLocaleString("id-ID")
-                  : "—"}
+                { !formattedTimestamp ? 
+                "-" : (
+                  <>
+                    <p>
+                      {formattedTimestamp.date}/{formattedTimestamp.month}/{formattedTimestamp.year}
+                    </p>
+                    <p>
+                        {formattedTimestamp.hours}:{formattedTimestamp.minutes}:{formattedTimestamp.seconds}
+                    </p>
+                  </>
+                    )}
               </span>
             </div>
           </div>
         </nav>
 
-        <div className='flex items-center md:justify-between gap-3 border border-gray-800 rounded-2xl px-6 py-3 w-full bg-[#061428] shadow-md shadow-white/10'>
+        <div className='flex items-center justify-between gap-3 border border-gray-800 rounded-2xl px-6 py-3 w-full bg-[#061428] shadow-md shadow-white/10'>
           {isESP32Connected ? (
             <div className='flex items-center gap-3'>
               <div className='flex items-center justify-center bg-[#073A2A] rounded-full w-10 h-10 lg:w-[50px] lg:h-[50px]'>
@@ -107,10 +118,10 @@ export default function Home() {
               Device
             </span>
             <div className='flex items-center gap-3'>
-              <Smartphone className='w-5 h-5 lg:w-6 lg:h-6' />
+              <Microchip className='w-5 h-5 lg:w-6 lg:h-6' />
 
               <span className='text-base lg:text-xl font-semibold'>
-                ESP32 Sensor
+                {reading?.device || "-"}
               </span>
             </div>
           </div>
