@@ -5,6 +5,9 @@ export function startHeartbeat (){
         console.log("testing heartbeat running properly di render");
         
         for(const client of clients){
+            console.log(`device = ${client.isEsp32}`);
+            console.log(`alive? = ${client.isAlive}`);
+            
             if(!client.isEsp32)continue
 
             if(!client.isAlive){

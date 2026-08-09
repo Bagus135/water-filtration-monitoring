@@ -56,6 +56,7 @@ export function createWSServer(server: Server, app : NextServer){
         }
         ws.on("pong", function(this : ExtendedWebSocket){
             this.isAlive = true;
+            
         });
 
         console.log( isESP32 ? `ESP32 connected ${device_id}` : "Other device");
