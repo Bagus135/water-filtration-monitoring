@@ -61,6 +61,9 @@ npm run dev
 
 4. Open http://localhost:3000 in your browser to access the water monitoring dashboard.
 
+### 3. Setting Up Environment
+Please refer to the `/esp32/` and `/frontend/` directories for more detailed information.
+
 ## Author
 
 Bagus Mustaqim (main man):
