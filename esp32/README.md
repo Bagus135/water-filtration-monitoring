@@ -1,3 +1,87 @@
+# ESP32
+
+This directory contains the firmware for the ESP32-based water quality monitoring system.
+
+The ESP32 firmware is developed using **PlatformIO** with the **Arduino framework** and is responsible for sensor data acquisition, water quality monitoring, relay control, and communication with the WebSocket server.
+
+## Framework and Development Platform
+
+This project uses:
+
+- **PlatformIO** — development and build environment
+- **Arduino Framework** — embedded development framework
+- **ESP32 DOIT DevKit V1** — target development board
+
+The project configuration is defined in:
+
+```text
+esp32/
+└── platformio.ini
+```
+
+Example configuration:
+
+```ini
+[env:esp32doit-devkit-v1]
+platform = espressif32
+board = esp32doit-devkit-v1
+framework = arduino
+monitor_speed = 115200
+upload_speed = 115200
+```
+
+## Responsibilities
+
+The ESP32 firmware handles:
+
+- pH sensor data acquisition
+- TDS sensor data acquisition
+- Turbidity sensor data acquisition
+- Before and after filtration measurements
+- ADC data processing and averaging
+- Relay control
+- IR sensor input
+- Wi-Fi connection
+- WPA2-Enterprise authentication using PEAP + MSCHAPv2
+- WebSocket/WSS communication
+- Periodic sensor data transmission
+- Automatic WebSocket reconnection
+
+## Project Structure
+
+```text
+esp32/
+├── include/
+├── lib/
+├── src/
+│   ├── env.h
+│   └── main.cpp
+├── test/
+├── .gitignore
+├── platformio.ini
+└── README.md
+```
+
+### `src/`
+
+Contains the main ESP32 firmware.
+
+```text
+src/
+└── main.cpp
+```
+
+`main.cpp` contains the implementation for:
+
+- Sensor reading
+- Sensor data processing
+- Relay control
+- Wi-Fi connection
+- WPA2-Enterprise authentication
+- WebSocket connection
+- JSON data transmission
+
+
 # Environment Configuration
 
 This project uses an `env.h` file to store sensitive configuration such as Wi-Fi credentials and the WebSocket authentication token.
