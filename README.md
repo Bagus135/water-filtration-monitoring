@@ -66,9 +66,13 @@ Please refer to the `/esp32/` and `/frontend/` directories for more detailed inf
 
 ## Author
 
-Bagus Mustaqim (main man):
+Bagus Mustaqim (Team Leader & WebSocket):
 
 - LinkedIn: https://linkedin.com/in/bagus-mustaqim-1a858325b/
+
+Ryan Gatra Maulana (Hardware and Wiring) :
+
+- LinkedIn : https://www.linkedin.com/in/ryan-gatra-maulana-946853281/
 
 Muhammad Fachrezi Barus (Front-end UI):
 
