@@ -3,6 +3,7 @@
 #include <WebSocketsClient.h>
 #include "env.h"
 
+// device name
 const char* DEVICE_ID = "ESP32-09";
 
 const int PIN_TDS_BEFORE = 39; 
