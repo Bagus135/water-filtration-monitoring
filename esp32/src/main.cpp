@@ -5,6 +5,7 @@
 
 const char* DEVICE_ID = "ESP32-09";
 
+// define pin 
 const int PIN_TDS_BEFORE = 39; 
 const int PIN_TURBIDITY_BEFORE = 36; 
 const int PIN_PH_BEFORE = 33;
