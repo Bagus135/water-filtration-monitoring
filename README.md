@@ -70,7 +70,7 @@ Bagus Mustaqim (Team Leader & WebSocket):
 
 - LinkedIn: https://linkedin.com/in/bagus-mustaqim-1a858325b/
 
-Ryan Gatra Maulana (Hardware and Wiring) :
+Ryan Gatra Maulana (Hardware, Wiring, and Calibration) :
 
 - LinkedIn : https://www.linkedin.com/in/ryan-gatra-maulana-946853281/
 
