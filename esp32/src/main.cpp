@@ -3,7 +3,7 @@
 #include <WebSocketsClient.h>
 #include "env.h"
 
-const char* DEVICE_ID = "ESP32-01";
+const char* DEVICE_ID = "ESP32-09";
 
 const int PIN_TDS_BEFORE = 39; 
 const int PIN_TURBIDITY_BEFORE = 36; 
