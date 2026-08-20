@@ -3,10 +3,9 @@
 #include <WebSocketsClient.h>
 #include "env.h"
 
-// device name
-const char* DEVICE_ID = "ESP32-09";
+const char* DEVICE_ID = "ESP32-01";
 
-// define pin 
+const int PIN_BUILDIN_LED = 2; 
 const int PIN_TDS_BEFORE = 39; 
 const int PIN_TURBIDITY_BEFORE = 36; 
 const int PIN_PH_BEFORE = 33;
@@ -18,6 +17,9 @@ const int PIN_PH_AFTER = 32;
 const int PIN_RELAY_1 = 15; 
 const int PIN_RELAY_2 = 5; 
 const int PIN_IR = 13;
+
+bool LED_STATE = false;
+unsigned long LAST_LED_BLINK_TIME = 0 ;
 
 const bool IS_SSL = true;
 WebSocketsClient WSClient; 
@@ -36,6 +38,19 @@ const float PH_OFFSET = 5.3;
 const float TURBIDITY_SLOPE = 100;
 const float TURBIDITY_OFFSET = 0;
 
+void updateWiFiLED(){
+  if(WiFi.status() == WL_CONNECTED){
+    digitalWrite(PIN_BUILDIN_LED, HIGH);
+  } else {
+    unsigned long now = millis(); 
+    if (now - LAST_LED_BLINK_TIME >= 300){
+      LAST_LED_BLINK_TIME = now;
+      LED_STATE = !LED_STATE;
+      digitalWrite(PIN_BUILDIN_LED, LED_STATE ? HIGH : LOW);
+    }
+  }
+}
+
 void connectWiFi(){
   WiFi.mode(WIFI_STA); 
   WiFi.disconnect(true); 
@@ -47,6 +62,7 @@ void connectWiFi(){
   unsigned long startTime = millis();
   
   while(WiFi.status() != WL_CONNECTED){
+    updateWiFiLED();
     delay(500);
     Serial.print(".");
     
@@ -126,10 +142,12 @@ float turbidityValue(float voltage){
 
 void setup() {
   Serial.begin(115200);
+  pinMode(PIN_BUILDIN_LED, OUTPUT);
+
   pinMode(PIN_RELAY_1, OUTPUT);
   pinMode(PIN_RELAY_2, OUTPUT);
   pinMode(PIN_IR, INPUT);
-
+  
   // Turn off relay
   digitalWrite(PIN_RELAY_1, HIGH);
   digitalWrite(PIN_RELAY_2, HIGH);
@@ -148,7 +166,7 @@ void setup() {
 
 void loop() {
   WSClient.loop(); 
-
+  updateWiFiLED();
   unsigned long now = millis(); 
   if(now - lastSendTime >= SEND_INTERVAL_MS){
     lastSendTime = now;
