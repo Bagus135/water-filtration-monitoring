@@ -1,0 +1,22 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SensorReading{
+  id Int @id @default(autoincrement())
+  deviceId String
+  phBefore Float?
+  tdsBefore Float?
+  turbidityBefore Float? 
+  phAfter Float?
+  tdsAfter Float?
+  turbidityAfter Float?
+  timestamp DateTime @default(now())
+  @@index([timestamp])
+}

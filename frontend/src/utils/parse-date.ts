@@ -1,6 +1,4 @@
 export default function dateParse(date :string|undefined){
-    console.log(date);
-    
     if(!date) return null
     const dateparse = new Date(date)
     const formattedTimestamp = {
