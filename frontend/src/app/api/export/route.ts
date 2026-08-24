@@ -6,18 +6,17 @@ export async function GET(request: NextRequest) {
     try{
         const {searchParams} = new URL(request.url);
         const startDateParam = searchParams.get("startDate");
-        const endDateparam = searchParams.get("endDate");
+        const endDateParam = searchParams.get("endDate");
 
-        if(!startDateParam || !endDateparam) {
+        if(!startDateParam || !endDateParam) {
             return NextResponse.json(
                 {message : "missing param"},
                 {status : 400}
             )
         }
         
-        const startDate = new Date(startDateParam)
-        const endDate = new Date(endDateparam)
-        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date(`${startDateParam}T00:00:00+07:00`);
+        const endDate = new Date(`${endDateParam}T23:59:59.999+07:00`);
 
         const readings = await prisma.sensorReading.findMany({
             where : {
@@ -52,13 +51,14 @@ export async function GET(request: NextRequest) {
 
         for(const r of readings){
             const date = new Date(r.timestamp); 
-            
+            const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
             sheet.addRow({
                 deviceId : r.deviceId,
-                year : date.getFullYear(), 
-                month : date.getMonth() + 1, 
-                date : date.getDate(),
-                time : date.toLocaleTimeString("id-ID", {
+                year : wib.getFullYear(), 
+                month : wib.getMonth() + 1, 
+                date : wib.getDate(),
+                time : wib.toLocaleTimeString("id-ID", {
                     hour : "2-digit",
                     minute : "2-digit", 
                     second : "2-digit"
