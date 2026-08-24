@@ -8,13 +8,19 @@
     "dev": "nodemon",
     "build": "next build",
     "start": "tsx src/server.ts",
-    "lint": "next lint"
+    "lint": "next lint", 
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "i": "^0.3.7",
     "lucide-react": "^1.30.0",
     "next": "16.2.12",
+    "node-cron": "^4.6.0",
+    "pg": "^8.23.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tsx": "^4.23.11",
@@ -22,7 +28,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/exceljs": "^0.5.3",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
@@ -30,6 +38,7 @@
     "eslint-config-next": "16.2.12",
     "kill-port": "^2.0.1",
     "nodemon": "^3.1.14",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

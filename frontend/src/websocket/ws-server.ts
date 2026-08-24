@@ -4,6 +4,7 @@ import { parse } from "url";
 import { WebSocketServer, WebSocket as WSClient } from "ws";
 import { WaterQualityClientsReading, WaterQualityESP32Reading } from "../types/types";
 import { ExtendedWebSocket } from "./types";
+import { prisma } from "../lib/prisma";
 
 export const clients = new Set<ExtendedWebSocket>()
 
@@ -71,7 +72,7 @@ export function createWSServer(server: Server, app : NextServer){
             }))
         }
 
-        ws.on("message", (raw : Buffer)=> {
+        ws.on("message", async (raw : Buffer)=> {
             let msg : Partial<WaterQualityESP32Reading>; 
             ws.lastSeen = Date.now()
             try {
@@ -98,6 +99,21 @@ export function createWSServer(server: Server, app : NextServer){
                 if(client.readyState === WebSocket.OPEN){
                     client.send(payload);
                 }
+            }
+            try {
+                await prisma.sensorReading.create({
+                    data :{
+                       deviceId : ws.deviceId ?? "unknown", 
+                       phBefore : msg.before.ph,
+                       tdsBefore : msg.before.tds,
+                       turbidityBefore : msg.before.turbidity,
+                       phAfter : msg.after.ph,
+                       tdsAfter : msg.after.tds,
+                       turbidityAfter : msg.after.turbidity,
+                    }
+                })
+            } catch (error) {
+                console.log("Cannot Write to Database", error)
             }
         })
 

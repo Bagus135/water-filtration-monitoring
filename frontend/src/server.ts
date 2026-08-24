@@ -2,9 +2,11 @@ import {serverConfig } from './config/config';
 import {createServer} from "http";
 import {parse} from "url";
 import next from "next";
+import cron from "node-cron"
 import { clients, createWSServer } from './websocket/ws-server';
 import { NextServer } from 'next/dist/server/next';
 import { startHeartbeat } from './websocket/check-alive';
+import { cleanUpOldData } from './utils/cronjob';
 
 const app = next({
     dev : serverConfig.dev, 
@@ -22,6 +24,11 @@ app.prepare().then(()=>{
 
     const wss = createWSServer(server, app as NextServer);
     const heartbeat = startHeartbeat();
+
+    cron.schedule("0 3 * * *", () => {
+        console.log("Executing CleanUp Old data...");
+        cleanUpOldData()
+    })
     
     const shutdown = (signal : string) =>{
         console.log(`${signal} received \nShutting down server`)

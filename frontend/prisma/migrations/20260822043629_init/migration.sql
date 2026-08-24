@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "SensorReading" ALTER COLUMN "phBefore" DROP NOT NULL,
+ALTER COLUMN "tdsBefore" DROP NOT NULL,
+ALTER COLUMN "turbidityBefore" DROP NOT NULL,
+ALTER COLUMN "phAfter" DROP NOT NULL,
+ALTER COLUMN "tdsAfter" DROP NOT NULL,
+ALTER COLUMN "turbidityAfter" DROP NOT NULL;

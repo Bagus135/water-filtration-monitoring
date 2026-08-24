@@ -3,7 +3,7 @@
 import { useWaterQualitySocket } from "../hooks/useReadSocket";
 import { StageReading } from "../types/types";
 import dateParse from "../utils/parse-date";
-import { MetricRow } from "./component";
+import { ExportModal, MetricRow } from "./component";
 import {
   Droplets,
   Wifi,
@@ -77,6 +77,9 @@ export default function Home() {
             </div>
           </div>
         </nav>
+        <div className="flex justify-end">
+          <ExportModal/>
+        </div>
 
         <div className='flex items-center justify-between gap-3 border border-gray-800 rounded-2xl px-6 py-3 w-full bg-[#061428] shadow-md shadow-white/10'>
           {isESP32Connected ? (
