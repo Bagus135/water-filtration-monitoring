@@ -84,7 +84,7 @@ export function ExportModal (){
       a.click();
       a.remove(); 
       window.URL.revokeObjectURL(url);
-
+      setErrorMsg("");
     } catch (error : any) {
       console.log(error)
       setErrorMsg(error.message as string); 
