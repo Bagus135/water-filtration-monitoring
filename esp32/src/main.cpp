@@ -3,6 +3,7 @@
 #include <WebSocketsClient.h>
 #include "env.h"
 
+// --- KONFIGURASI PERANGKAT ---
 const char* DEVICE_ID = "ESP32-01";
 
 const int PIN_BUILDIN_LED = 2; 
@@ -19,8 +20,9 @@ const int PIN_RELAY_2 = 5;
 const int PIN_IR = 13;
 
 bool LED_STATE = false;
-unsigned long LAST_LED_BLINK_TIME = 0 ;
+unsigned long LAST_LED_BLINK_TIME = 0;
 
+// --- KONFIGURASI JARINGAN ---
 const bool IS_SSL = true;
 WebSocketsClient WSClient; 
 unsigned long lastSendTime = 0; 
@@ -28,16 +30,20 @@ const unsigned long SEND_INTERVAL_MS = 3000;
 
 const char* WS_HOST_LOCAL = "192.168.137.1"; 
 const uint16_t WS_PORT_LOCAL = 3000; 
-
 const char* WS_HOST_SSL = "water-filtration-monitoring.onrender.com"; 
 const uint16_t WS_PORT_SSL = 443; 
 
-const float PH_SLOPE = 1;
-const float PH_OFFSET = 5.3;
+// --- KALIBRASI SENSOR ---
+const float PH_SLOPE = 1.0;
+const float PH_OFFSET_BEFORE = 4.40; 
+const float PH_OFFSET_AFTER = 5.63;  
 
-const float TURBIDITY_SLOPE = 100;
-const float TURBIDITY_OFFSET = 0;
+const float TURBIDITY_SLOPE = 100.0;
+const float TURBIDITY_OFFSET = 0.0;
 
+// ==========================================
+// FUNGSI KONEKSI
+// ==========================================
 void updateWiFiLED(){
   if(WiFi.status() == WL_CONNECTED){
     digitalWrite(PIN_BUILDIN_LED, HIGH);
@@ -85,22 +91,25 @@ String buildWSPath(){
   return path;
 }
 
-
 void WSEvent (WStype_t  type, uint8_t* payload , size_t length){
   switch (type) {
   case WStype_CONNECTED:
-    Serial.print("WS Connected to Server");
+    Serial.println("WS Connected to Server");
     break;
   case WStype_DISCONNECTED : 
-    Serial.print("WS Disconnected"); 
+    Serial.println("WS Disconnected"); 
     break;
   case WStype_ERROR :
-    Serial.print("WS Error"); 
+    Serial.println("WS Error"); 
     break;
   default:
     break;
   }
 } 
+
+// ==========================================
+// FUNGSI PEMBACAAN DAN FILTERING
+// ==========================================
 
 float ADCAvg(int pin){
   int buffer_adc[10]; 
@@ -109,7 +118,7 @@ float ADCAvg(int pin){
     delay(10);
   }
 
-  for(int i = 0; i <9; i++){
+  for(int i = 0; i < 9; i++){
     for(int j = i+1; j < 10; j++){
       if(buffer_adc[i] > buffer_adc[j]){
         int temp = buffer_adc[i];
@@ -118,27 +127,50 @@ float ADCAvg(int pin){
       };
     };
   }
+  
   long total_adc = 0; 
-  for(int i = 2; i <8; i++){
-    total_adc +=buffer_adc[i];
+  for(int i = 2; i < 8; i++){
+    total_adc += buffer_adc[i];
   }
-  return (float) total_adc /6.0;
+  return (float) total_adc / 6.0;
 }
 
-float tdsValue (float voltage) {
-  const float tdsVal = (133.42 * voltage*voltage*voltage - 255.86 * voltage*voltage + 857.39 * voltage) * 0.5;
-  return tdsVal;
-};
+float getTurbidityADC(int pin) {
+  long total_adc = 0;
+  for (int i = 0; i < 100; i++) {
+    total_adc += analogRead(pin);
+    delay(2);
+  }
+  return (float)(total_adc / 100.0);
+}
 
-float pHValue(float voltage){
-  const float pHVal = (PH_SLOPE * voltage) +  PH_OFFSET;
-  return pHVal;
+// ==========================================
+// FUNGSI KONVERSI MATEMATIKA SENSOR
+// ==========================================
+
+float pHValue(float voltage, float offset){
+  return (PH_SLOPE * voltage) + offset;
 }
 
 float turbidityValue(float voltage){
-  const float turbidityVal = (TURBIDITY_SLOPE * voltage) +  TURBIDITY_OFFSET;
-  return turbidityVal;
+  return (TURBIDITY_SLOPE * voltage) + TURBIDITY_OFFSET;
 }
+
+float tdsValueRaw(float voltage) {
+  return (133.42 * voltage * voltage * voltage - 255.86 * voltage * voltage + 857.39 * voltage) * 0.5;
+}
+
+float getTdsCalibratedBefore(float rawTds) {
+  return (1.5096 * rawTds) + 6.5883;
+}
+
+float getTdsCalibratedAfter(float rawTds) {
+  return (1.32 * rawTds) - 27.51;
+}
+
+// ==========================================
+// SETUP & LOOP UTAMA
+// ==========================================
 
 void setup() {
   Serial.begin(115200);
@@ -148,7 +180,6 @@ void setup() {
   pinMode(PIN_RELAY_2, OUTPUT);
   pinMode(PIN_IR, INPUT);
   
-  // Turn off relay
   digitalWrite(PIN_RELAY_1, HIGH);
   digitalWrite(PIN_RELAY_2, HIGH);
   
@@ -168,47 +199,67 @@ void loop() {
   WSClient.loop(); 
   updateWiFiLED();
   unsigned long now = millis(); 
+  
   if(now - lastSendTime >= SEND_INTERVAL_MS){
     lastSendTime = now;
     
-    // before filtering
+    // ------------------------------------------
+    // 1. PENGAMBILAN DATA BEFORE FILTERING
+    // ------------------------------------------
     float adc_ph_before = ADCAvg(PIN_PH_BEFORE); 
     float adc_tds_before = ADCAvg(PIN_TDS_BEFORE); 
-    float adc_turbidity_before = ADCAvg(PIN_TURBIDITY_BEFORE);
+    float adc_turbidity_before = getTurbidityADC(PIN_TURBIDITY_BEFORE); 
 
-    float v_ph_before = (adc_ph_before/ 4095.0) * 3.3; 
-    float v_tds_before = (adc_tds_before/ 4095.0) * 3.3; 
-    float v_turbidity_before = ((adc_turbidity_before/ 4095.0) * 3.3) *1.47; 
-
-    // after filtering
+    float v_ph_before = (adc_ph_before / 4095.0) * 3.3; 
+    float v_tds_before = (adc_tds_before / 4095.0) * 3.3; 
+    
+    // ------------------------------------------
+    // 2. PENGAMBILAN DATA AFTER FILTERING
+    // ------------------------------------------
     float adc_ph_after = ADCAvg(PIN_PH_AFTER); 
     float adc_tds_after = ADCAvg(PIN_TDS_AFTER); 
-    float adc_turbidity_after = ADCAvg(PIN_TURBIDITY_AFTER);
+    float adc_turbidity_after = getTurbidityADC(PIN_TURBIDITY_AFTER); 
 
-    float v_ph_after = (adc_ph_after/ 4095.0) * 3.3; 
-    float v_tds_after = (adc_tds_after/ 4095.0) * 3.3; 
-    float v_turbidity_after = ((adc_turbidity_after/ 4095.0) * 3.3) *1.47; 
+    float v_ph_after = (adc_ph_after / 4095.0) * 3.3; 
+    float v_tds_after = (adc_tds_after / 4095.0) * 3.3; 
+    float v_turbidity_after = ((adc_turbidity_after / 4095.0) * 3.3) * 1.47; 
     
+    // ------------------------------------------
+    // 3. PENYUSUNAN JSON & REGRESI
+    // ------------------------------------------
     JsonDocument doc;
 
     JsonObject before = doc["before"].to<JsonObject>();
-    before["ph"] = pHValue(v_ph_before); 
-    before["turbidity"] = turbidityValue(v_turbidity_before); 
-    before["tds"] = tdsValue(v_tds_before);
+    before["ph"] = pHValue(v_ph_before, PH_OFFSET_BEFORE); 
+    before["turbidity"] = adc_turbidity_before; 
+    
+    // Penyesuaian akhir (Fine-tuning) TDS Before
+    float raw_tds_before = tdsValueRaw(v_tds_before);
+    float final_tds_before = getTdsCalibratedBefore(raw_tds_before) - 9.0;
+    if (final_tds_before < 0) final_tds_before = 0; // Pengaman nilai minus
+    before["tds"] = final_tds_before;
 
     JsonObject after = doc["after"].to<JsonObject>();
-    after["ph"] = pHValue(v_ph_after); 
+    after["ph"] = pHValue(v_ph_after, PH_OFFSET_AFTER); 
     after["turbidity"] = turbidityValue(v_turbidity_after); 
-    after["tds"] = tdsValue(v_tds_after); 
+    
+    // Penyesuaian akhir (Fine-tuning) TDS After
+    float raw_tds_after = tdsValueRaw(v_tds_after);
+    float final_tds_after = getTdsCalibratedAfter(raw_tds_after) + 22.0;
+    if (final_tds_after < 0) final_tds_after = 0; // Pengaman nilai minus
+    after["tds"] = final_tds_after; 
 
+    // ------------------------------------------
+    // 4. KIRIM DATA WEBSOCKET
+    // ------------------------------------------
     String output; 
     serializeJson(doc, output); 
 
     if (WSClient.isConnected()){
       WSClient.sendTXT(output); 
-      Serial.print("Send : " + output); 
+      Serial.println("Send : " + output); 
     } else {
-      Serial.println("WS hasnt connected to server yet, data cannot send");
+      Serial.println("WS hasn't connected to server yet, data cannot send");
     }
   }
 }
