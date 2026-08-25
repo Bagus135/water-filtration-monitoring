@@ -81,12 +81,14 @@ export async function GET(request: NextRequest) {
         const  buffer = await workbook.xlsx.writeBuffer(); 
         
         const startDatelabel = startDate.toLocaleDateString("id-ID", {
+            timeZone : "Asia/Jakarta",
             day : "2-digit", 
             month : "2-digit", 
             year : "numeric"
         }); 
-
+        
         const endDateLabel = endDate.toLocaleDateString("id-ID",{
+            timeZone : "Asia/Jakarta",
             day : "2-digit", 
             month : "2-digit", 
             year : "numeric"
