@@ -46,7 +46,6 @@ export function ExportModal (){
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("")
   const [errorMsg, setErrorMsg] = useState("");
-  console.log(errorMsg);
   
   const handleDownload = async() => {
     try {
@@ -86,7 +85,6 @@ export function ExportModal (){
       window.URL.revokeObjectURL(url);
       setErrorMsg("");
     } catch (error : any) {
-      console.log(error)
       setErrorMsg(error.message as string); 
     }
   }
