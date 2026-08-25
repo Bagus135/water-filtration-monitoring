@@ -6,7 +6,7 @@ import cron from "node-cron"
 import { clients, createWSServer } from './websocket/ws-server';
 import { NextServer } from 'next/dist/server/next';
 import { startHeartbeat } from './websocket/check-alive';
-import { cleanUpOldData } from './utils/cronjob';
+import { cleanUpOldData } from './websocket/cleanup-data';
 
 const app = next({
     dev : serverConfig.dev, 

@@ -18,6 +18,13 @@ export async function GET(request: NextRequest) {
         const startDate = new Date(`${startDateParam}T00:00:00+07:00`);
         const endDate = new Date(`${endDateParam}T23:59:59.999+07:00`);
 
+        if(startDate > endDate) {
+            return NextResponse.json(
+                {message : "Start date must be before end date."},
+                {status : 400}
+            )
+        }
+
         const readings = await prisma.sensorReading.findMany({
             where : {
                 timestamp : {
@@ -81,9 +88,10 @@ export async function GET(request: NextRequest) {
 
         const endDateLabel = endDate.toLocaleDateString("id-ID",{
             day : "2-digit", 
-            minute : "2-digit", 
-            year : "2-digit"
+            month : "2-digit", 
+            year : "numeric"
         })
+
         const filenameLabel = `Data Water Quality ${startDatelabel} - ${endDateLabel}.xlsx`
         
         return new NextResponse(buffer, {
