@@ -15,8 +15,9 @@ const int PIN_TDS_AFTER = 35;
 const int PIN_TURBIDITY_AFTER = 34; 
 const int PIN_PH_AFTER = 32; 
 
-const int PIN_RELAY_1 = 15; 
-const int PIN_RELAY_2 = 5; 
+// Konfigurasi Pin Relay
+const int PIN_RELAY_1 = 5; // Relay Motor Pompa Filtrasi
+const int PIN_RELAY_2 = 15;  // Relay Cadangan
 const int PIN_IR = 13;
 
 bool LED_STATE = false;
@@ -38,8 +39,13 @@ const float PH_SLOPE = 1.0;
 const float PH_OFFSET_BEFORE = 4.40; 
 const float PH_OFFSET_AFTER = 5.63;  
 
-const float TURBIDITY_SLOPE = 100.0;
-const float TURBIDITY_OFFSET = 0.0;
+// --- BATAS AMAN KUALITAS AIR (THRESHOLD) ---
+const float THRESHOLD_PH_MIN = 6.5;
+const float THRESHOLD_PH_MAX = 8.5;
+const float THRESHOLD_TDS_MAX = 500.0;
+// Nilai tegangan (Volt). Di atas ini = Jernih, di bawah ini = Keruh.
+// Silakan sesuaikan angka 2.0 ini dengan hasil ukurmu!
+const float THRESHOLD_TURBIDITY_RAW = 0.9; 
 
 // ==========================================
 // FUNGSI KONEKSI
@@ -110,7 +116,6 @@ void WSEvent (WStype_t  type, uint8_t* payload , size_t length){
 // ==========================================
 // FUNGSI PEMBACAAN DAN FILTERING
 // ==========================================
-
 float ADCAvg(int pin){
   int buffer_adc[10]; 
   for(int i = 0; i < 10; i++){
@@ -147,13 +152,13 @@ float getTurbidityADC(int pin) {
 // ==========================================
 // FUNGSI KONVERSI MATEMATIKA SENSOR
 // ==========================================
-
 float pHValue(float voltage, float offset){
   return (PH_SLOPE * voltage) + offset;
 }
 
+// Mengembalikan nilai murni (Tegangan aktual) tanpa perkalian
 float turbidityValue(float voltage){
-  return (TURBIDITY_SLOPE * voltage) + TURBIDITY_OFFSET;
+  return voltage;
 }
 
 float tdsValueRaw(float voltage) {
@@ -169,9 +174,25 @@ float getTdsCalibratedAfter(float rawTds) {
 }
 
 // ==========================================
+// FUNGSI LOGIKA OTOMASI RELAY (SISTEM FILTRASI)
+// ==========================================
+void checkWaterQuality(float ph, float tds, float turbidity_raw) {
+  // Evaluasi menggunakan Tegangan Turbidity mentah
+  
+  if (turbidity_raw < THRESHOLD_TURBIDITY_RAW) {
+    // Tegangan rendah = Cahaya terhalang = Air Kotor -> POMPA FILTRASI NYALA (LOW)
+    digitalWrite(PIN_RELAY_1, LOW);
+    Serial.println("Status: Air kotor (Tegangan Drop). Pompa filtrasi MENYALA.");
+  } else {
+    // Tegangan tinggi = Cahaya tembus = Air Bening -> POMPA FILTRASI MATI (HIGH)
+    digitalWrite(PIN_RELAY_1, HIGH);
+    Serial.println("Status: Air bening (Tegangan Normal). Pompa filtrasi MATI.");
+  }
+}
+
+// ==========================================
 // SETUP & LOOP UTAMA
 // ==========================================
-
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_BUILDIN_LED, OUTPUT);
@@ -203,9 +224,7 @@ void loop() {
   if(now - lastSendTime >= SEND_INTERVAL_MS){
     lastSendTime = now;
     
-    // ------------------------------------------
-    // 1. PENGAMBILAN DATA BEFORE FILTERING
-    // ------------------------------------------
+    // 1. BEFORE FILTERING
     float adc_ph_before = ADCAvg(PIN_PH_BEFORE); 
     float adc_tds_before = ADCAvg(PIN_TDS_BEFORE); 
     float adc_turbidity_before = getTurbidityADC(PIN_TURBIDITY_BEFORE); 
@@ -213,9 +232,7 @@ void loop() {
     float v_ph_before = (adc_ph_before / 4095.0) * 3.3; 
     float v_tds_before = (adc_tds_before / 4095.0) * 3.3; 
     
-    // ------------------------------------------
-    // 2. PENGAMBILAN DATA AFTER FILTERING
-    // ------------------------------------------
+    // 2. AFTER FILTERING
     float adc_ph_after = ADCAvg(PIN_PH_AFTER); 
     float adc_tds_after = ADCAvg(PIN_TDS_AFTER); 
     float adc_turbidity_after = getTurbidityADC(PIN_TURBIDITY_AFTER); 
@@ -224,34 +241,33 @@ void loop() {
     float v_tds_after = (adc_tds_after / 4095.0) * 3.3; 
     float v_turbidity_after = ((adc_turbidity_after / 4095.0) * 3.3) * 1.47; 
     
-    // ------------------------------------------
-    // 3. PENYUSUNAN JSON & REGRESI
-    // ------------------------------------------
+    // 3. PENYUSUNAN JSON 
     JsonDocument doc;
 
     JsonObject before = doc["before"].to<JsonObject>();
     before["ph"] = pHValue(v_ph_before, PH_OFFSET_BEFORE); 
     before["turbidity"] = adc_turbidity_before; 
     
-    // Penyesuaian akhir (Fine-tuning) TDS Before
     float raw_tds_before = tdsValueRaw(v_tds_before);
     float final_tds_before = getTdsCalibratedBefore(raw_tds_before) - 9.0;
-    if (final_tds_before < 0) final_tds_before = 0; // Pengaman nilai minus
+    if (final_tds_before < 0) final_tds_before = 0; 
     before["tds"] = final_tds_before;
 
     JsonObject after = doc["after"].to<JsonObject>();
-    after["ph"] = pHValue(v_ph_after, PH_OFFSET_AFTER); 
-    after["turbidity"] = turbidityValue(v_turbidity_after); 
+    float final_ph_after = pHValue(v_ph_after, PH_OFFSET_AFTER);
+    float final_turbidity_raw_after = turbidityValue(v_turbidity_after); 
+    after["ph"] = final_ph_after; 
+    after["turbidity"] = final_turbidity_raw_after; // Mengirimkan langsung nilai Volt ke dashboard
     
-    // Penyesuaian akhir (Fine-tuning) TDS After
     float raw_tds_after = tdsValueRaw(v_tds_after);
     float final_tds_after = getTdsCalibratedAfter(raw_tds_after) + 22.0;
-    if (final_tds_after < 0) final_tds_after = 0; // Pengaman nilai minus
+    if (final_tds_after < 0) final_tds_after = 0; 
     after["tds"] = final_tds_after; 
 
-    // ------------------------------------------
-    // 4. KIRIM DATA WEBSOCKET
-    // ------------------------------------------
+    // 4. JALANKAN LOGIKA RELAY
+    checkWaterQuality(final_ph_after, final_tds_after, final_turbidity_raw_after);
+
+    // 5. KIRIM DATA WEBSOCKET
     String output; 
     serializeJson(doc, output); 
 
