@@ -45,7 +45,7 @@ const float THRESHOLD_PH_MAX = 8.5;
 const float THRESHOLD_TDS_MAX = 500.0;
 // Nilai tegangan (Volt). Di atas ini = Jernih, di bawah ini = Keruh.
 // Silakan sesuaikan angka 2.0 ini dengan hasil ukurmu!
-const float THRESHOLD_TURBIDITY_RAW = 0.9; 
+const float THRESHOLD_TURBIDITY_RAW = 0.5; 
 
 // ==========================================
 // FUNGSI KONEKSI
