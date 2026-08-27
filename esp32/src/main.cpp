@@ -15,9 +15,9 @@ const int PIN_TDS_AFTER = 35;
 const int PIN_TURBIDITY_AFTER = 34; 
 const int PIN_PH_AFTER = 32; 
 
-// Konfigurasi Pin Relay
-const int PIN_RELAY_1 = 5; // Relay Motor Pompa Filtrasi
-const int PIN_RELAY_2 = 15;  // Relay Cadangan
+// --- KONFIGURASI RELAY ---
+const int PIN_RELAY_1 = 5;  // IN1: Pompa Filtrasi Utama (D5)
+const int PIN_RELAY_2 = 15; // IN2: Cadangan (D15)
 const int PIN_IR = 13;
 
 bool LED_STATE = false;
@@ -42,10 +42,10 @@ const float PH_OFFSET_AFTER = 5.63;
 // --- BATAS AMAN KUALITAS AIR (THRESHOLD) ---
 const float THRESHOLD_PH_MIN = 6.5;
 const float THRESHOLD_PH_MAX = 8.5;
-const float THRESHOLD_TDS_MAX = 500.0;
-// Nilai tegangan (Volt). Di atas ini = Jernih, di bawah ini = Keruh.
-// Silakan sesuaikan angka 2.0 ini dengan hasil ukurmu!
-const float THRESHOLD_TURBIDITY_RAW = 0.5; 
+const float THRESHOLD_TDS_MAX = 500.0; // ppm
+
+// Batas kekeruhan di-set ke 1800 NTU (Titik tengah antara 1200 dan 2300)
+const float THRESHOLD_TURBIDITY_NTU = 1800.0; 
 
 // ==========================================
 // FUNGSI KONEKSI
@@ -72,16 +72,12 @@ void connectWiFi(){
   WiFi.begin(WIFI_SSID, WPA2_AUTH_PEAP, WIFI_IDENTITY, WIFI_USERNAME, WIFI_PASSWORD);
   
   unsigned long startTime = millis();
-  
   while(WiFi.status() != WL_CONNECTED){
     updateWiFiLED();
     delay(500);
     Serial.print(".");
-    
     if (millis() - startTime > 30000){
-      Serial.println("");
-      Serial.println("WiFi connection timeout");
-      Serial.println("Restarting ESP32");
+      Serial.println("\nWiFi connection timeout, restarting...");
       ESP.restart();
     }
   } 
@@ -97,19 +93,12 @@ String buildWSPath(){
   return path;
 }
 
-void WSEvent (WStype_t  type, uint8_t* payload , size_t length){
+void WSEvent (WStype_t type, uint8_t* payload , size_t length){
   switch (type) {
-  case WStype_CONNECTED:
-    Serial.println("WS Connected to Server");
-    break;
-  case WStype_DISCONNECTED : 
-    Serial.println("WS Disconnected"); 
-    break;
-  case WStype_ERROR :
-    Serial.println("WS Error"); 
-    break;
-  default:
-    break;
+    case WStype_CONNECTED: Serial.println("WS Connected"); break;
+    case WStype_DISCONNECTED : Serial.println("WS Disconnected"); break;
+    case WStype_ERROR : Serial.println("WS Error"); break;
+    default: break;
   }
 } 
 
@@ -122,17 +111,15 @@ float ADCAvg(int pin){
     buffer_adc[i] = analogRead(pin);
     delay(10);
   }
-
   for(int i = 0; i < 9; i++){
     for(int j = i+1; j < 10; j++){
       if(buffer_adc[i] > buffer_adc[j]){
         int temp = buffer_adc[i];
         buffer_adc[i] = buffer_adc[j];
         buffer_adc[j] = temp;
-      };
-    };
+      }
+    }
   }
-  
   long total_adc = 0; 
   for(int i = 2; i < 8; i++){
     total_adc += buffer_adc[i];
@@ -156,9 +143,20 @@ float pHValue(float voltage, float offset){
   return (PH_SLOPE * voltage) + offset;
 }
 
-// Mengembalikan nilai murni (Tegangan aktual) tanpa perkalian
-float turbidityValue(float voltage){
-  return voltage;
+float turbidityValueNTU(float voltage){
+  float V_CLEAR = 2.0; 
+  float V_DIRTY = 0.7; 
+
+  if (voltage > V_CLEAR) voltage = V_CLEAR;
+  if (voltage < V_DIRTY) voltage = V_DIRTY;
+
+  float mapped_voltage = ((voltage - V_DIRTY) * (4.2 - 2.5) / (V_CLEAR - V_DIRTY)) + 2.5;
+
+  float ntu = (-1120.4 * mapped_voltage * mapped_voltage) + (5742.3 * mapped_voltage) - 4352.9;
+  
+  ntu = ntu - 0.904; 
+  if (ntu < 0) return 0.0;
+  return ntu;
 }
 
 float tdsValueRaw(float voltage) {
@@ -174,19 +172,23 @@ float getTdsCalibratedAfter(float rawTds) {
 }
 
 // ==========================================
-// FUNGSI LOGIKA OTOMASI RELAY (SISTEM FILTRASI)
+// FUNGSI OTOMASI RELAY BERBASIS pH, TDS, & NTU
 // ==========================================
-void checkWaterQuality(float ph, float tds, float turbidity_raw) {
-  // Evaluasi menggunakan Tegangan Turbidity mentah
-  
-  if (turbidity_raw < THRESHOLD_TURBIDITY_RAW) {
-    // Tegangan rendah = Cahaya terhalang = Air Kotor -> POMPA FILTRASI NYALA (LOW)
-    digitalWrite(PIN_RELAY_1, LOW);
-    Serial.println("Status: Air kotor (Tegangan Drop). Pompa filtrasi MENYALA.");
+void checkWaterQuality(float ph, float tds, float turbidity_ntu) {
+  bool isSafe_pH = (ph >= THRESHOLD_PH_MIN && ph <= THRESHOLD_PH_MAX);
+  bool isSafe_TDS = (tds <= THRESHOLD_TDS_MAX);
+  bool isSafe_Turbidity = (turbidity_ntu <= THRESHOLD_TURBIDITY_NTU);
+
+  if (!isSafe_pH || !isSafe_TDS || !isSafe_Turbidity) {
+    digitalWrite(PIN_RELAY_1, LOW); // Pompa Menyala
+    Serial.print("Status: AIR TIDAK AMAN! (");
+    if (!isSafe_Turbidity) Serial.print("Kekeruhan Tinggi ");
+    if (!isSafe_pH) Serial.print("pH Abnormal ");
+    if (!isSafe_TDS) Serial.print("TDS Tinggi ");
+    Serial.println(") -> Pompa MENYALA.");
   } else {
-    // Tegangan tinggi = Cahaya tembus = Air Bening -> POMPA FILTRASI MATI (HIGH)
-    digitalWrite(PIN_RELAY_1, HIGH);
-    Serial.println("Status: Air bening (Tegangan Normal). Pompa filtrasi MATI.");
+    digitalWrite(PIN_RELAY_1, HIGH); // Pompa Mati
+    Serial.println("Status: AIR AMAN (Jernih & Normal). Pompa MATI.");
   }
 }
 
@@ -196,7 +198,6 @@ void checkWaterQuality(float ph, float tds, float turbidity_raw) {
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_BUILDIN_LED, OUTPUT);
-
   pinMode(PIN_RELAY_1, OUTPUT);
   pinMode(PIN_RELAY_2, OUTPUT);
   pinMode(PIN_IR, INPUT);
@@ -224,7 +225,7 @@ void loop() {
   if(now - lastSendTime >= SEND_INTERVAL_MS){
     lastSendTime = now;
     
-    // 1. BEFORE FILTERING
+    // 1. PEMBACAAN BEFORE
     float adc_ph_before = ADCAvg(PIN_PH_BEFORE); 
     float adc_tds_before = ADCAvg(PIN_TDS_BEFORE); 
     float adc_turbidity_before = getTurbidityADC(PIN_TURBIDITY_BEFORE); 
@@ -232,7 +233,7 @@ void loop() {
     float v_ph_before = (adc_ph_before / 4095.0) * 3.3; 
     float v_tds_before = (adc_tds_before / 4095.0) * 3.3; 
     
-    // 2. AFTER FILTERING
+    // 2. PEMBACAAN AFTER
     float adc_ph_after = ADCAvg(PIN_PH_AFTER); 
     float adc_tds_after = ADCAvg(PIN_TDS_AFTER); 
     float adc_turbidity_after = getTurbidityADC(PIN_TURBIDITY_AFTER); 
@@ -255,27 +256,30 @@ void loop() {
 
     JsonObject after = doc["after"].to<JsonObject>();
     float final_ph_after = pHValue(v_ph_after, PH_OFFSET_AFTER);
-    float final_turbidity_raw_after = turbidityValue(v_turbidity_after); 
+    
+    float final_turbidity_ntu_after = turbidityValueNTU(v_turbidity_after); 
+    
     after["ph"] = final_ph_after; 
-    after["turbidity"] = final_turbidity_raw_after; // Mengirimkan langsung nilai Volt ke dashboard
+    after["turbidity"] = final_turbidity_ntu_after; 
     
     float raw_tds_after = tdsValueRaw(v_tds_after);
     float final_tds_after = getTdsCalibratedAfter(raw_tds_after) + 22.0;
     if (final_tds_after < 0) final_tds_after = 0; 
     after["tds"] = final_tds_after; 
 
-    // 4. JALANKAN LOGIKA RELAY
-    checkWaterQuality(final_ph_after, final_tds_after, final_turbidity_raw_after);
+    // 4. JALANKAN LOGIKA RELAY GABUNGAN
+    checkWaterQuality(final_ph_after, final_tds_after, final_turbidity_ntu_after);
 
-    // 5. KIRIM DATA WEBSOCKET
+    // 5. DEBUGGING VOLTASE VIA SERIAL MONITOR
+    Serial.print("Voltase Turbidity Saat Ini: ");
+    Serial.println(v_turbidity_after);
+
+    // 6. KIRIM DATA WEBSOCKET
     String output; 
     serializeJson(doc, output); 
 
     if (WSClient.isConnected()){
       WSClient.sendTXT(output); 
-      Serial.println("Send : " + output); 
-    } else {
-      Serial.println("WS hasn't connected to server yet, data cannot send");
     }
   }
 }
