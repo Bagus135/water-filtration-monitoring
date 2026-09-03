@@ -5,14 +5,14 @@ export async function cleanUpOldData(){
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() -2); 
 
     try {
-        await prisma.sensorReading.deleteMany({
+         const del = await prisma.sensorReading.deleteMany({
             where : { 
                 timestamp : {
                     lt : twoMonthsAgo
                 }
             }
         })
-        console.log("Clean up data succesfully")
+        console.log(`Clean up data succesfully ${del.count}`)
     } catch (err) {
         console.error("Failed to cleanup data", err)
     }

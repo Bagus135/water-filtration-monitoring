@@ -25,6 +25,8 @@ app.prepare().then(()=>{
     const wss = createWSServer(server, app as NextServer);
     const heartbeat = startHeartbeat();
 
+    cleanUpOldData();
+
     cron.schedule("0 3 * * *", () => {
         console.log("Executing CleanUp Old data...");
         cleanUpOldData()
