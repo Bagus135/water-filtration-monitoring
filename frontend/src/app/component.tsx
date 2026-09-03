@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { AlertTriangle, Download } from "lucide-react";
+import { AlertTriangle, Download, Loader2Icon } from "lucide-react";
 import { Fragment, useState } from "react";
 
 export function MetricRow({
@@ -46,11 +46,13 @@ export function ExportModal (){
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("")
   const [errorMsg, setErrorMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   
   const handleDownload = async() => {
     try {
       if(!startDate || !endDate) throw new Error("Start date and end date are required")
-
+      
+      setIsLoading(true)
       const params = new URLSearchParams(); 
       params.set("startDate", startDate);
       params.set("endDate", endDate);
@@ -86,6 +88,8 @@ export function ExportModal (){
       setErrorMsg("");
     } catch (error : any) {
       setErrorMsg(error.message as string); 
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -140,9 +144,15 @@ export function ExportModal (){
                 <button 
                   onClick={handleDownload}
                   className=" group cursor-pointer flex gap-2 justify-center items-center px-4 py-2 rounded-lg text-sm bg-sky-900 hover:bg-sky-950"
-                  >
-                  <Download className="group-hover:animate-[download_0.5s_ease-out]"/>
-                  Download
+                  >{
+                    isLoading ? 
+                    <Loader2Icon className="animate-spin size-4"/> 
+                    :
+                    <Fragment>
+                    <Download className="group-hover:animate-[download_0.5s_ease-out]"/>
+                      Download
+                    </Fragment>
+                  }
                 </button>
               </div>
             </div>
