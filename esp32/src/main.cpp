@@ -106,10 +106,16 @@ void WSEvent (WStype_t type, uint8_t* payload , size_t length){
 // FUNGSI PEMBACAAN DAN FILTERING
 // ==========================================
 float ADCAvg(int pin){
+  // --- TRIK DUMMY READ ---
+  // Membaca pin sekali dan membuang hasilnya 
+  // untuk membersihkan sisa tegangan (crosstalk) di kapasitor ADC ESP32
+  analogRead(pin); 
+  delay(10); 
+
   int buffer_adc[10]; 
   for(int i = 0; i < 10; i++){
     buffer_adc[i] = analogRead(pin);
-    delay(10);
+    delay(10); // Memberi waktu agar ADC benar-benar stabil
   }
   for(int i = 0; i < 9; i++){
     for(int j = i+1; j < 10; j++){
@@ -164,11 +170,11 @@ float tdsValueRaw(float voltage) {
 }
 
 float getTdsCalibratedBefore(float rawTds) {
-  return (1.5096 * rawTds) + 6.5883;
+  return (1.215 * rawTds) - 1.4557;
 }
 
 float getTdsCalibratedAfter(float rawTds) {
-  return (1.32 * rawTds) - 27.51;
+  return (1.009 * rawTds) - 1.4557;
 }
 
 // ==========================================
@@ -250,7 +256,7 @@ void loop() {
     before["turbidity"] = adc_turbidity_before; 
     
     float raw_tds_before = tdsValueRaw(v_tds_before);
-    float final_tds_before = getTdsCalibratedBefore(raw_tds_before) - 9.0;
+    float final_tds_before = getTdsCalibratedBefore(raw_tds_before);
     if (final_tds_before < 0) final_tds_before = 0; 
     before["tds"] = final_tds_before;
 
@@ -263,7 +269,7 @@ void loop() {
     after["turbidity"] = final_turbidity_ntu_after; 
     
     float raw_tds_after = tdsValueRaw(v_tds_after);
-    float final_tds_after = getTdsCalibratedAfter(raw_tds_after) + 22.0;
+    float final_tds_after = getTdsCalibratedAfter(raw_tds_after);
     if (final_tds_after < 0) final_tds_after = 0; 
     after["tds"] = final_tds_after; 
 
